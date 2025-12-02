@@ -372,7 +372,7 @@ def train_diffusion():
 
     if resume_model and not resume_model.startswith("/"):
         resume_model = os.path.join(config.exp_path, resume_model)
-    lastest_model = os.path.join(config.save_path, "ckpt_best.pth.tar")
+    lastest_model = os.path.join(config.save_path, "ckpt.pth.tar")
     if auto_resume and os.path.exists(lastest_model):
         resume_model = lastest_model
     if resume_model:
@@ -560,11 +560,13 @@ def validate(val_loader, model, epoch=None):
             reconstructed = model.diffusion.reconstruct(
                     x=aug_image, 
                     y0=aug_image, 
-                    timesteps=None
+                    w=2
             )
             # MSE between original and reconstructed
             recon_error = torch.mean((aug_image - reconstructed) ** 2, dim=1, keepdim=True)  # [B, 1, H, W]
             outputs = {
+                    "origin": aug_image,
+                    "recon": reconstructed,
                     "pred": recon_error,  # Anomaly map
                     "filename": input_dev["filename"],
                     "height": input_dev["height"],
@@ -579,6 +581,7 @@ def validate(val_loader, model, epoch=None):
             for name, criterion_loss in criterion.items():
                 weight = criterion_loss.weight
                 loss += weight * criterion_loss(outputs)  
+
             num = len(outputs["filename"])
             losses.update(loss.item(), num)
             # measure elapsed time

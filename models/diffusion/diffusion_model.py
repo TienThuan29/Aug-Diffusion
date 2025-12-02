@@ -81,10 +81,14 @@ class DiffusionModel(nn.Module):
             "t": t
         }
     
-    def reconstruct(self, x_0, y0: Optional[torch.Tensor] = None, w: float = 1.0, num_steps: Optional[int] = None):
+    def reconstruct(self, x, y0, w, num_steps: Optional[int] = None):
         if self.reconstruction is None:
             raise ValueError("reconstruction class is not initialized")
         
-        xs = self.reconstruction(x_0, y0=y0, w=w, num_steps=num_steps)
+        xs = self.reconstruction(x, y0=y0, w=w)
         return xs[-1]
+        # return {
+        #     "recon": xs[-1],
+        #     "origin": x
+        # }
     

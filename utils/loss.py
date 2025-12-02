@@ -34,8 +34,8 @@ class MSELoss(nn.Module):
         self.weight = weight
 
     def forward(self, input):
-        predicted = input["pred"]
-        target = input["target"]
+        predicted = input["recon"]
+        target = input["origin"]
         return self.criterion_mse(predicted, target)
 
 
@@ -46,8 +46,8 @@ class DiffusionLoss(nn.Module):
         self.weight = weight
     
     def forward(self, input):
-        predicted_noise = input["predicted_noise"]
-        target_noise = input["target_noise"]
+        predicted_noise = input["noise_pred"]
+        target_noise = input["noise"]
         return self.criterion_mse(predicted_noise, target_noise)
 
 

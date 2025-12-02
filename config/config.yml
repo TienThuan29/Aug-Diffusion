@@ -22,7 +22,7 @@ dataset:
   input_size: [224,224] # [h,w]
   pixel_mean: [0.485, 0.456, 0.406]
   pixel_std: [0.229, 0.224, 0.225]
-  batch_size: 16
+  batch_size: 8
   workers: 4
 
 train_contrastive_criterion:
@@ -89,9 +89,25 @@ saver:
   save_dir: checkpoints/
   log_dir: log/
 
+# evaluator:
+#   save_dir: result_eval_temp
+#   key_metric: mean_pixel_auc
+#   vis_compound:
+#     save_dir: ./tools/vis_compound
+#     max_score: null
+#     min_score: null
 evaluator:
   save_dir: result_eval_temp
   key_metric: mean_pixel_auc
+  metrics:
+    auc:
+      - name: std
+      - name: max
+        kwargs:
+          avgpool_size:
+            - 16
+            - 16
+      - name: pixel
   vis_compound:
     save_dir: ./tools/vis_compound
     max_score: null

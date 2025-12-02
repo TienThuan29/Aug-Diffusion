@@ -42,6 +42,7 @@ class Reconstruction:
         beta = torch.cat([torch.zeros(1, device=device), betas], dim=0) # [b1, b2, ...] -> # [0, b1, b2]
         alphas = (1 - beta).cumprod(dim=0) 
         a = alphas.index_select(0, t+1).view(-1, 1, 1, 1)
+        return a
     
     def __call__(self, x, y0, w) -> Any:
         """
