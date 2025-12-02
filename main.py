@@ -562,6 +562,9 @@ def validate(val_loader, model, epoch=None):
                     y0=aug_image, 
                     w=2
             )
+
+            aug_images_list.append(aug_image.detach().cpu())
+
             # MSE between original and reconstructed
             recon_error = torch.mean((aug_image - reconstructed) ** 2, dim=1, keepdim=True)  # [B, 1, H, W]
             outputs = {
@@ -609,6 +612,7 @@ def validate(val_loader, model, epoch=None):
     log_metrics(ret_metrics, config.evaluator.metrics)
     
     if args.evaluate and config.evaluator.get("vis_compound", None):
+        print('vis_compound')
         # visualize_compound(
         #     fileinfos,
         #     preds,
@@ -617,6 +621,7 @@ def validate(val_loader, model, epoch=None):
         #     config.dataset.image_reader,
         # )
         if aug_images_list is not None and len(aug_images_list) > 0:
+            print('aug_images_list is not None')
             # Concatenate all augmented images
             aug_images_tensor = torch.cat(aug_images_list, dim=0)
             visualize_compound_aug(
