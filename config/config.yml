@@ -1,0 +1,181 @@
+random_seed: 42  #133
+
+dataset:
+  type: custom
+
+  image_reader:
+    type: opencv
+    kwargs:
+      image_dir: datasets/mvtec_anomaly_detection/
+      color_mode: RGB
+
+  train:
+    meta_file: meta_data/MVTec-AD/train.json
+    rebalance: false
+    hflip: false
+    vflip: false
+    rotate: false
+
+  test:
+    meta_file: meta_data/MVTec-AD/test.json
+  
+  input_size: [224,224] # [h,w]
+  pixel_mean: [0.485, 0.456, 0.406]
+  pixel_std: [0.229, 0.224, 0.225]
+  batch_size: 16
+  workers: 4
+
+train_contrastive_criterion:
+  - name: NTXentLoss
+    type: NTXentLoss
+    kwargs:
+      temp: 0.07
+      normalize: True
+      reduction: "mean"
+
+train_diffusion_criterion:
+  - name: DiffusionLoss
+    type: DiffusionLoss
+    kwargs:
+      weight: 1.0
+
+test_criterion:
+  - name: MSELoss
+    type: MSELoss
+    kwargs:
+      weight: 1.0
+
+# trainer
+contrastive_trainer:
+  max_epoch: 1000
+  print_freq_step: 1
+  tb_freq_step: 1
+  lr_scheduler:
+    type: CosineAnnealingLR
+    kwargs:
+      T_max: 1000
+      eta_min: 0.00001
+  optimizer:
+    type: AdamW
+    kwargs:
+      lr: 0.0001
+      betas: [0.9, 0.999]
+      weight_decay: 0.00001
+
+
+diffusion_trainer:
+  max_epoch: 3000
+  val_freq_epoch: 20
+  clip_max_norm: 0.1
+  print_freq_step: 1
+  tb_freq_step: 1
+  lr_scheduler:
+    type: StepLR
+    kwargs:
+      step_size: 200      #800
+      gamma: 0.1
+  optimizer:
+    type: AdamW
+    kwargs:
+      lr: 0.0001
+      betas: [0.9, 0.999]
+      weight_decay: 0.00001
+
+
+saver:
+  auto_resume: true
+  always_save: false
+  load_path: null
+  save_dir: checkpoints/
+  log_dir: log/
+
+evaluator:
+  save_dir: result_eval_temp
+  key_metric: mean_pixel_auc
+  vis_compound:
+    save_dir: ./tools/vis_compound
+    max_score: null
+    min_score: null
+
+# all net
+contrastive_net:
+  - name: linear_aug
+    type: models.contrastive.aug_modules.LinearAugmentation
+    kwargs:
+      in_channels: 3
+      out_channels: 3
+      bias: true
+
+  - name: cnn_aug
+    type: models.contrastive.aug_modules.CNNAugmentation
+    kwargs:
+      in_channels: 3
+      out_channels: 3
+      kernel_size: 3
+      padding: 1
+      n_blocks: 1
+      num_groups: 3
+      bias: true
+
+  - name: gumbel_aug
+    type: models.contrastive.aug_modules.GumbelAugmentation
+    kwargs:
+      aug_linear: linear_aug
+      aug_cnn: cnn_aug
+      tau: 1.0
+      hard: False
+
+  - name: backbone
+    prev: gumbel_aug
+    type: models.backbones.efficientnet_b4
+    frozen: false
+    kwargs:
+      pretrained: false
+      # select outlayers from: resnet [1,2,3,4], efficientnet [1,2,3,4,5]
+      # empirically, for industrial: resnet [1,2,3] or [2,3], efficientnet [1,2,3,4] or [2,3,4]
+      outlayers: [1,2,3,4]
+
+  - name: neck
+    prev: backbone
+    type: models.necks.MFCN
+    kwargs:
+      outstrides: [16]
+      
+  - name: arl
+    prev: neck
+    type: models.contrastive.arl.ARL
+    kwargs:
+      h_dim: 256
+  
+diffusion_net:
+  - name: diffusion
+    type: models.diffusion.diffusion_model.DiffusionModel
+    prev: gumbel_aug
+    kwargs:
+      # unet deonising
+      unet:
+        type: models.diffusion.unet.UNetModel
+        kwargs:
+          img_size: 224
+          base_channels: 64
+          conv_resample: true
+          n_heads: 4
+          n_head_channels: -1 # -1 is dynamically with img_size
+          channel_mults: ""
+          num_res_blocks: 2
+          dropout: 0.1
+          attention_resolutions: "32,16,8"
+          biggan_updown: true
+          in_channels: 3
+      timesteps: 1000
+      beta_schedule: "linear"
+      beta_start: 0.0001
+      beta_end: 0.02
+      # reconstruction
+      reconstruction_params:
+        type: models.diffusion.reconstruction.Reconstruction
+        kwargs:
+          trajectory_steps: 1000
+          test_trajectory_steps: 250
+          skip: 25
+          eta: 1.0

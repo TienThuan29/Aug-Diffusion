@@ -1,0 +1,12 @@
+torch
+torchvision
+numpy
+PyYAML
+easydict
+tensorboardX
+opencv-python
+Pillow
+scikit-learn
+pytorch-metric-learning
+tabulate
+setproctitle
