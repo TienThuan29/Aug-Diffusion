@@ -142,7 +142,8 @@ def load_state(path, model, optimizer=None, return_full_checkpoint=False):
                 print("caution: missing keys from checkpoint {}: {}".format(path, k))
 
         if optimizer is not None:
-            best_metric = checkpoint["best_metric"]
+            # best_metric = checkpoint["best_metric"]
+            best_metric = checkpoint.get("best_metric", None)
             epoch = checkpoint["epoch"]
             # optimizer.load_state_dict(checkpoint["optimizer"])
             if rank == 0:

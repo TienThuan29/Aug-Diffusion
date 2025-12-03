@@ -71,6 +71,10 @@ class DiffusionModelBuilder(nn.Module):
         # load contrastive model
         self.gumbel_aug.load_state_dict(contrastive_model.gumbel_aug.state_dict())
         print("loaded pretrained gumbel_aug")
+        # frozen gumbel
+        for p in self.gumbel_aug.parameters():
+            p.requires_grad = False
+
         # build diffusion model
         # diffusion_net_config = cfg.get('diffusion_net', [])
         # diffusion_config = module_config.copy()

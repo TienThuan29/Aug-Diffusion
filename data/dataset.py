@@ -112,7 +112,7 @@ class CustomDataset(Dataset):
             image = Image.fromarray(image, "RGB")
             
             # read / generate mask
-            if meta.get("mask", None):
+            if meta.get("maskname", None):
                   mask = self.image_reader(meta["maskname"], is_mask=True)
             else:
                   if label == 0:  # good

@@ -539,6 +539,109 @@ def train_diffusion_one_epoch(
         end = time.time()
 
 
+# def validate(val_loader, model, epoch=None):
+    # batch_time = AverageMeter(0)
+    # losses = AverageMeter(0)
+    # model.eval()
+    
+    # logger = logging.getLogger("global_logger")
+    # criterion = build_criterion(config.test_criterion)
+    # end = time.time()
+
+    # os.makedirs(config.evaluator.eval_dir, exist_ok=True)
+    # aug_images_list = [] if (args.evaluate and config.evaluator.get("vis_compound", None)) else None
+
+    # with torch.no_grad():
+    #     for i, input in enumerate(val_loader):
+    #         input_dev = to_device(input, device=getattr(model, 'device', 'cuda'))
+    #         image = input_dev["image"] # norm [0,1]
+
+    #         aug_image = model.gumbel_aug(image)
+    #         reconstructed = model.diffusion.reconstruct(
+    #                 x=aug_image, 
+    #                 y0=aug_image, 
+    #                 w=2
+    #         )
+
+    #         aug_images_list.append(aug_image.detach().cpu())
+
+    #         # MSE between original and reconstructed
+    #         recon_error = torch.mean((aug_image - reconstructed) ** 2, dim=1, keepdim=True)  # [B, 1, H, W]
+    #         outputs = {
+    #                 "origin": aug_image,
+    #                 "recon": reconstructed,
+    #                 "pred": recon_error,  # Anomaly map
+    #                 "filename": input_dev["filename"],
+    #                 "height": input_dev["height"],
+    #                 "width": input_dev["width"],
+    #                 "clsname": input_dev["clsname"],
+    #                 "mask": input_dev["mask"],
+    #         }
+
+    #         dump(config.evaluator.eval_dir, outputs)
+    #         # record loss using original model outputs
+    #         loss = 0
+    #         for name, criterion_loss in criterion.items():
+    #             weight = criterion_loss.weight
+    #             loss += weight * criterion_loss(outputs)  
+
+    #         num = len(outputs["filename"])
+    #         losses.update(loss.item(), num)
+    #         # measure elapsed time
+    #         batch_time.update(time.time() - end)
+    #         end = time.time()
+    #         if (i + 1) % config.diffusion_trainer.print_freq_step == 0 and logger:
+    #             logger.info(
+    #                 "Test: [{0}/{1}]\tTime {batch_time.val:.3f} ({batch_time.avg:.3f})".format(
+    #                     i + 1, len(val_loader), batch_time=batch_time
+    #                 )
+    #             )
+                
+    # # gather final results
+    # final_loss = losses.avg
+    # total_num = losses.count
+
+    # if logger:
+    #     logger.info("Gathering final results ...")
+    #     # total loss
+    #     logger.info(" * Loss {:.5f}\ttotal_num={}".format(final_loss, total_num))
+    # fileinfos, preds, masks = merge_together(config.evaluator.eval_dir)
+    # shutil.rmtree(config.evaluator.eval_dir)
+    # # evaluate, log & vis
+    # ret_metrics = performances(fileinfos, preds, masks, config.evaluator.metrics)
+    # log_metrics(ret_metrics, config.evaluator.metrics)
+    
+    # if args.evaluate and config.evaluator.get("vis_compound", None):
+    #     print('vis_compound')
+    #     # visualize_compound(
+    #     #     fileinfos,
+    #     #     preds,
+    #     #     masks,
+    #     #     config.evaluator.vis_compound,
+    #     #     config.dataset.image_reader,
+    #     # )
+    #     if aug_images_list is not None and len(aug_images_list) > 0:
+    #         print('aug_images_list is not None')
+    #         # Concatenate all augmented images
+    #         aug_images_tensor = torch.cat(aug_images_list, dim=0)
+    #         visualize_compound_aug(
+    #             fileinfos,
+    #             aug_images_tensor,
+    #             preds,
+    #             masks,
+    #             config.evaluator.vis_compound,
+    #             config.dataset.image_reader
+    #         )
+    # if args.evaluate and config.evaluator.get("vis_single", None):
+    #     visualize_single(
+    #         fileinfos,
+    #         preds,
+    #         config.evaluator.vis_single,
+    #         config.dataset.image_reader,
+    #     )
+    # model.train()
+    # return ret_metrics
+
 def validate(val_loader, model, epoch=None):
     batch_time = AverageMeter(0)
     losses = AverageMeter(0)
@@ -550,6 +653,7 @@ def validate(val_loader, model, epoch=None):
 
     os.makedirs(config.evaluator.eval_dir, exist_ok=True)
     aug_images_list = [] if (args.evaluate and config.evaluator.get("vis_compound", None)) else None
+    reconstructed_images_list = [] if (args.evaluate and config.evaluator.get("vis_compound", None)) else None
 
     with torch.no_grad():
         for i, input in enumerate(val_loader):
@@ -558,15 +662,23 @@ def validate(val_loader, model, epoch=None):
 
             aug_image = model.gumbel_aug(image)
             reconstructed = model.diffusion.reconstruct(
-                    x=aug_image, 
-                    y0=aug_image, 
-                    w=2
+                    x=image, 
+                    y0=image, 
+                    w=1.5
             )
 
-            aug_images_list.append(aug_image.detach().cpu())
+            if aug_images_list is not None:
+                aug_images_list.append(aug_image.detach().cpu())
+            if reconstructed_images_list is not None:
+                # Handle case where reconstructed might be a list (take last element) or tensor
+                if isinstance(reconstructed, list):
+                    reconstructed_images_list.append(reconstructed[-1].detach().cpu())
+                else:
+                    reconstructed_images_list.append(reconstructed.detach().cpu())
 
             # MSE between original and reconstructed
-            recon_error = torch.mean((aug_image - reconstructed) ** 2, dim=1, keepdim=True)  # [B, 1, H, W]
+            # recon_error = torch.mean((aug_image - reconstructed) ** 2, dim=1, keepdim=True)  # [B, 1, H, W]
+            recon_error = torch.mean((image - reconstructed) ** 2, dim=1, keepdim=True)  # [B, 1, H, W]
             outputs = {
                     "origin": aug_image,
                     "recon": reconstructed,
@@ -612,25 +724,20 @@ def validate(val_loader, model, epoch=None):
     log_metrics(ret_metrics, config.evaluator.metrics)
     
     if args.evaluate and config.evaluator.get("vis_compound", None):
-        print('vis_compound')
-        # visualize_compound(
-        #     fileinfos,
-        #     preds,
-        #     masks,
-        #     config.evaluator.vis_compound,
-        #     config.dataset.image_reader,
-        # )
+        # print('vis_compound')
         if aug_images_list is not None and len(aug_images_list) > 0:
-            print('aug_images_list is not None')
+            # print('aug_images_list is not None')
             # Concatenate all augmented images
             aug_images_tensor = torch.cat(aug_images_list, dim=0)
+            reconstructed_images_tensor = torch.cat(reconstructed_images_list, dim=0) if reconstructed_images_list is not None and len(reconstructed_images_list) > 0 else None
             visualize_compound_aug(
                 fileinfos,
                 aug_images_tensor,
                 preds,
                 masks,
                 config.evaluator.vis_compound,
-                config.dataset.image_reader
+                config.dataset.image_reader,
+                reconstructed_images_tensor
             )
     if args.evaluate and config.evaluator.get("vis_single", None):
         visualize_single(
@@ -641,7 +748,6 @@ def validate(val_loader, model, epoch=None):
         )
     model.train()
     return ret_metrics
-
 
 def main():
     args = parser.parse_args()
