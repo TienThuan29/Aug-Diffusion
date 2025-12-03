@@ -49,8 +49,8 @@ class_name_list = [
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--config", default="./config/config.yml")
-parser.add_argument("--training_phase", default="diffusion", choices=["contrastive", "diffusion"])
-parser.add_argument("--class_name", default="bottle", help="Class name for separate training")
+parser.add_argument("--training_phase", default="contrastive", choices=["contrastive", "diffusion"])
+parser.add_argument("--class_name", default="capsule", help="Class name for separate training")
 parser.add_argument("-e", "--evaluate", action="store_true")
 parser.add_argument("--local_rank", default=None)
 parser.add_argument("--single_gpu", action="store_true")
