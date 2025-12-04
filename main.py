@@ -49,7 +49,7 @@ class_name_list = [
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--config", default="./config/config.yml")
-parser.add_argument("--training_phase", default="contrastive", choices=["contrastive", "diffusion"])
+parser.add_argument("--training_phase", default="diffusion", choices=["contrastive", "diffusion"])
 parser.add_argument("--class_name", default="capsule", help="Class name for separate training")
 parser.add_argument("-e", "--evaluate", action="store_true")
 parser.add_argument("--local_rank", default=None)
@@ -664,7 +664,7 @@ def validate(val_loader, model, epoch=None):
             reconstructed = model.diffusion.reconstruct(
                     x=image, 
                     y0=image, 
-                    w=1.5
+                    w=3.0
             )
 
             if aug_images_list is not None:
